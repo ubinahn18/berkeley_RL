@@ -90,13 +90,14 @@ class ModelBasedAgent(nn.Module):
         # HINT 3: make sure to avoid any risk of dividing by zero when
         # normalizing vectors by adding a small number to the denominator!
 
-        obs_mean = np.mean(obs)
-        obs_std = np.std(obs)
-        acs_mean = np.mean(acs)
-        acs_std = np.std(acs)
-        delta = obs - next_obs
-        delta_mean = np.mean(delta)
-        delta_std = np.std(delta)
+        obs_mean = obs.mean(axis=0, keepdims=True)
+        obs_std = obs.std(axis=0, keepdims=True)
+        acs_mean = acs.mean(axis=0, keepdims=True)
+        acs_std = acs.std(axis=0, keepdims=True)
+        delta = next_obs - obs  
+        delta_mean = delta.mean(axis=0, keepdims=True)
+        delta_std = delta.std(axis=0, keepdims=True)
+
         
         epsilon = e^(-8)
 
@@ -104,7 +105,8 @@ class ModelBasedAgent(nn.Module):
         norm_acs = (acs - acs_mean)/(acs_std + epsilon)
         norm_delta = (delta - delta_mean)/(delta_std + epsilon)
         
-        pred_norm_delta = self.dynamics_models[i](torch.cat((norm_obs,norm_acs), dim = -1))
+        input_data = torch.cat((norm_obs, norm_acs), dim=-1)
+        pred_norm_delta = self.dynamics_models[i](input_data)
         
         loss = self.loss_fn(norm_delta, pred_norm_delta)
         self.optimizer.zero_grad()
@@ -161,16 +163,19 @@ class ModelBasedAgent(nn.Module):
         # Same hints as `update` above, avoid nasty divide-by-zero errors when
         # normalizing inputs!
 
-        obs_mean = np.mean(obs)
-        obs_std = np.std(obs)
-        acs_mean = np.mean(acs)
-        acs_std = np.std(acs)
+        obs_mean = obs.mean(axis=0, keepdims=True)
+        obs_std = obs.std(axis=0, keepdims=True)
+        acs_mean = acs.mean(axis=0, keepdims=True)
+        acs_std = acs.std(axis=0, keepdims=True)
         
         epsilon = e^(-8)
 
         norm_obs = (obs - obs_mean)/(obs_std + epsilon)
         norm_acs = (acs - acs_mean)/(acs_std + epsilon)
-        pred_norm_delta = self.dynamics_models[i](torch.cat((norm_obs,norm_acs), dim = -1))
+        
+        input_data = torch.cat((norm_obs, norm_acs), dim=-1)
+        pred_norm_delta = self.dynamics_models[i](input_data)
+        
         pred_delta = pred_norm_delta*self.obs_delta_std + self.obs_delta_mean
         pred_next_obs = obs + pred_delta
         
@@ -233,8 +238,7 @@ class ModelBasedAgent(nn.Module):
         
         # Average over the ensemble dimension and return
         return sum_of_rewards.mean(axis=0)
-
-
+        
             obs = next_obs
 
         # now we average over the ensemble dimension
